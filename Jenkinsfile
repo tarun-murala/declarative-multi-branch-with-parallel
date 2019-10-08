@@ -1,64 +1,81 @@
 pipeline {
     agent any
-    tools { 
-        maven 'Maven' 
+    tools {
+        maven 'Maven'
     }
     stages {
-        stage('Checkout') {
+        stage("checkout") {
             steps {
                 snDevOpsStep()
                 snDevOpsChange()
+                echo "Building" 
                 checkout scm
             }
         }
-        stage('Build') {
+
+        stage("build") {
             steps {
                 snDevOpsStep()
                 snDevOpsChange()
-                sh 'mvn clean install -DskipTests=true'
+                echo "Building" 
+                sh "mvn clean install -DskipTests=true"
             }
         }
-        stage('Unit Test') {
-            steps {
-                snDevOpsStep()
-                snDevOpsChange()
-                sh "mvn test -Dtest=AppTest"
+
+        stage("test") {
+            parallel {
+                stage('Unit Test') {
+                    steps {
+                        snDevOpsStep()
+                        snDevOpsChange()
+                        echo "Unit Test"
+                        sh "mvn test -Dtest=AppTest"
+                    }
+                }
+                stage('UAT Test') {
+                    steps {
+                        snDevOpsStep ()
+                        snDevOpsChange()
+                        echo "Testing"
+                        sh "mvn test -Dtest=AddTest"
+                    }
+                }
             }
         }
-        stage('Integration Test') {
+
+        stage("integration-test") {
             steps {
-                snDevOpsStep()
+                snDevOpsStep ()
                 snDevOpsChange()
-                sh "mvn test -Dtest=AddTest"
+                echo "Testing"
+                sh "mvn test -Dtest=SubtractTest"
             }
         }
-        stage('Deploy to Dev') {
-            when {
-                branch 'dev' 
-            }
-            steps {
-                snDevOpsStep()
-                snDevOpsChange()
-                // sh "mvn -B deploy"
-                // sh "mvn -B release:prepare"
-                // sh "mvn -B release:perform"
-                // deploy using kubernetes - kubectl
-                echo "Deploy to dev"
-            }
-        }
-        stage('Deploy to Prod') {
-            when {
-                branch 'master'  
-            }
-            steps {
-                snDevOpsStep()
-                snDevOpsChange()
-                // sh "mvn -B deploy"
-                // sh "mvn -B release:prepare"
-                // sh "mvn -B release:perform"
-                // deploy using kubernetes - kubectl
-                echo "Deploy to prod"
+
+        stage("deploy") {
+            stages{
+                stage('deploy to dev') {
+                    when{
+                        branch 'dev'
+                    }
+                    steps{
+                        snDevOpsStep ()
+                        echo "deploy in UAT"
+                        snDevOpsChange()
+                    }
+                }
+                stage('deploy to prod') {
+                    when {
+                        branch 'master'
+                    }
+                    steps{
+                        snDevOpsStep ()
+                        echo "deploy in prod"
+                        snDevOpsChange()
+                    }
+                }
             }
         }
     }
+
 }
